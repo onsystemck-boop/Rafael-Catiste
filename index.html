@@ -1544,6 +1544,11 @@ footer {
 </style>
 </head>
 <body>
+<div id="loading-overlay" style="display:flex;position:fixed;inset:0;background:rgba(14,14,14,0.92);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px;backdrop-filter:blur(4px);">
+  <div style="width:40px;height:40px;border:2px solid rgba(201,168,76,0.2);border-top-color:#C9A84C;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+  <span style="font-size:13px;color:#8A8278;letter-spacing:0.1em;">Carregando...</span>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <!-- NAV -->
 <nav id="navbar">
@@ -1889,7 +1894,7 @@ footer {
     Entre em contato agora. O atendimento é gratuito e sem compromisso.
   </p>
   <div class="contato-channels reveal">
-    <a id="whatsapp-main-btn" href="https://wa.me/5565999999999?text=Olá+Rafael!+Tenho+interesse+em+saber+mais+sobre+imóveis+do+MCMV" target="_blank" class="channel-btn channel-whatsapp">
+    <a id="whatsapp-main-btn" href="https://wa.me/5565999730722?text=Olá+Rafael!+Tenho+interesse+em+saber+mais+sobre+imóveis+do+MCMV" target="_blank" class="channel-btn channel-whatsapp">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.118 1.522 5.854L0 24l6.278-1.648A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.002-1.363l-.358-.214-3.718.975.991-3.623-.235-.372A9.805 9.805 0 012.182 12C2.182 6.574 6.574 2.182 12 2.182S21.818 6.574 21.818 12 17.426 21.818 12 21.818z"/></svg>
       Conversar no WhatsApp
     </a>
@@ -1910,7 +1915,7 @@ footer {
     <span>Especialista em Minha Casa Minha Vida · Cuiabá - MT</span>
   </div>
   <div class="footer-creci" id="footer-creci">
-    —
+    MT 7998
   </div>
 </footer>
 
@@ -1948,7 +1953,7 @@ footer {
     <div class="admin-form">
       <div class="form-group">
         <label>Número de WhatsApp</label>
-        <input type="text" id="admin-whatsapp" placeholder="5565999999999" onchange="salvarConfig()">
+        <input type="text" id="admin-whatsapp" placeholder="5565999730722" onchange="salvarConfig()">
       </div>
       <div class="form-group">
         <label>Número CRECI</label>
@@ -1973,26 +1978,114 @@ footer {
         </ol>
         <div style="background:rgba(0,0,0,0.35);border-radius:4px;padding:12px;margin-top:10px;">
           <p style="font-size:10px;color:var(--text-muted);margin-bottom:6px;letter-spacing:0.08em;text-transform:uppercase;">Codigo Apps Script:</p>
-          <pre id="apps-script-code" style="font-size:10px;color:#A8D8A8;line-height:1.7;white-space:pre-wrap;overflow-x:auto;">function doPost(e) {
-  var sheet = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getActiveSheet();
-  var data = JSON.parse(e.postData.contents);
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow([
-      &apos;Data&apos;,&apos;Nome&apos;,&apos;WhatsApp&apos;,&apos;Cidade&apos;,&apos;Idade&apos;,
-      &apos;Estado Civil&apos;,&apos;Renda&apos;,&apos;FGTS&apos;,&apos;Moradia&apos;,
-      &apos;CLT/Servidor&apos;,&apos;Tipo Imovel&apos;,&apos;Urgencia&apos;,&apos;Obs&apos;
-    ]);
+          <pre id="apps-script-code" style="font-size:10px;color:#A8D8A8;line-height:1.7;white-space:pre-wrap;overflow-x:auto;">function doGet(e) {
+  var action = e.parameter.action;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (action === 'getData') {
+    var config = getSheetData(ss, 'config');
+    var imoveis = getSheetData(ss, 'imoveis');
+    var depoimentos = getSheetData(ss, 'depoimentos');
+    return jsonResponse({ config: config[0] || {}, imoveis: imoveis, depoimentos: depoimentos });
   }
-  sheet.appendRow([
-    data.data, data.nome, data.whatsapp,
-    data.cidade, data.idade, data.estadoCivil,
-    data.renda, data.fgts, data.moradia,
-    data.emprego, data.tipo, data.urgencia, data.obs
-  ]);
+
+  if (action === 'getLeads') {
+    var leads = getSheetData(ss, 'leads');
+    return jsonResponse({ leads: leads });
+  }
+
+  return jsonResponse({ error: 'action nao reconhecida' });
+}
+
+function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var action = data.action;
+
+  if (action === 'saveLead') {
+    var sheet = getOrCreateSheet(ss, 'leads',
+      ['Data','Nome','WhatsApp','Cidade','Idade','Estado Civil',
+       'Renda','FGTS','Moradia','CLT/Servidor','Tipo Imovel','Urgencia','Obs']);
+    sheet.appendRow([data.data, data.nome, data.whatsapp, data.cidade,
+      data.idade, data.estadoCivil, data.renda, data.fgts,
+      data.moradia, data.emprego, data.tipo, data.urgencia, data.obs]);
+  }
+
+  else if (action === 'saveImovel') {
+    var im = data.imovel;
+    var sheet = getOrCreateSheet(ss, 'imoveis',
+      ['id','nome','local','preco','area','quartos','vagas','status','img','desc']);
+    sheet.appendRow([im.id, im.nome, im.local, im.preco,
+      im.area, im.quartos, im.vagas, im.status, im.img, im.desc]);
+  }
+
+  else if (action === 'deleteImovel') {
+    var sheet = ss.getSheetByName('imoveis');
+    if (sheet) {
+      var vals = sheet.getDataRange().getValues();
+      for (var i = vals.length - 1; i >= 1; i--) {
+        if (String(vals[i][0]) === String(data.id)) {
+          sheet.deleteRow(i + 1); break;
+        }
+      }
+    }
+  }
+
+  else if (action === 'updateImovelStatus') {
+    var sheet = ss.getSheetByName('imoveis');
+    if (sheet) {
+      var vals = sheet.getDataRange().getValues();
+      for (var i = 1; i < vals.length; i++) {
+        if (String(vals[i][0]) === String(data.id)) {
+          sheet.getRange(i + 1, 8).setValue(data.status); break;
+        }
+      }
+    }
+  }
+
+  else if (action === 'saveDepoimento') {
+    var d = data.depoimento;
+    var sheet = getOrCreateSheet(ss, 'depoimentos', ['nome','texto','cidade']);
+    sheet.appendRow([d.nome, d.texto, d.cidade]);
+  }
+
+  else if (action === 'saveConfig') {
+    var cfg = data.config;
+    var sheet = getOrCreateSheet(ss, 'config', ['whatsapp','creci','adminPass']);
+    sheet.clearContents();
+    sheet.appendRow(['whatsapp','creci','adminPass']);
+    sheet.appendRow([cfg.whatsapp || '', cfg.creci || '', cfg.adminPass || '']);
+  }
+
+  return jsonResponse({ ok: true });
+}
+
+function getSheetData(ss, name) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  var vals = sheet.getDataRange().getValues();
+  var headers = vals[0];
+  var result = [];
+  for (var i = 1; i < vals.length; i++) {
+    var obj = {};
+    headers.forEach(function(h, j) { obj[h] = vals[i][j]; });
+    result.push(obj);
+  }
+  return result;
+}
+
+function getOrCreateSheet(ss, name, headers) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(headers);
+  }
+  return sheet;
+}
+
+function jsonResponse(obj) {
   return ContentService
-    .createTextOutput(JSON.stringify({ok:true}))
+    .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }</pre>
           <button onclick="copiarScript()" style="margin-top:8px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.25);color:var(--gold);padding:7px 14px;border-radius:3px;font-size:11px;cursor:pointer;font-family:DM Sans,sans-serif;" id="btn-copiar">Copiar codigo</button>
@@ -2102,133 +2195,176 @@ footer {
 </div>
 
 <script>
-// ─── STATE ───
+// ═══════════════════════════════════════════════
+// CONFIGURAÇÃO — URL do Apps Script
+// ═══════════════════════════════════════════════
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxPLW8JGV3qTgyytP2zBKA-C-SUga-mrbxiZf7gKqHUJVKNvoDdMgcEUdV3GZl5Mu16_w/exec';
+
+// ═══════════════════════════════════════════════
+// ESTADO LOCAL (cache em memória apenas)
+// ═══════════════════════════════════════════════
 let state = {
+  config: { whatsapp: '5565999730722', creci: 'MT 7998', adminPass: 'rafael2025', sheetsUrl: SCRIPT_URL },
   imoveis: [],
-  depoimentos: [
-    { nome: 'Família Oliveira', cidade: 'Cuiabá - MT', texto: 'O Rafael foi incrível do começo ao fim. Nunca imaginei que seria tão fácil. Em 4 meses já estava com as chaves na mão!' },
-    { nome: 'Márcia Santos', cidade: 'Várzea Grande - MT', texto: 'Achei que com meu histórico não ia conseguir, mas o Rafael encontrou uma forma. Super atencioso e honesto sobre tudo.' },
-    { nome: 'Carlos e Renata', cidade: 'Cuiabá - MT', texto: 'Usamos o FGTS como entrada e o processo foi todo acompanhado. Recomendo de olhos fechados para qualquer família que queira a casa própria.' }
-  ],
-  leads: [],
-  config: {
-    whatsapp: '5565999999999',
-    creci: '',
-    sheetsUrl: 'https://script.google.com/macros/s/AKfycbxPLW8JGV3qTgyytP2zBKA-C-SUga-mrbxiZf7gKqHUJVKNvoDdMgcEUdV3GZl5Mu16_w/exec',
-    adminPass: 'rafael2025'
-  }
+  depoimentos: [],
+  leads: []
 };
 
-// ─── INIT ───
-function init() {
-  const saved = localStorage.getItem('rc_state');
-  if (saved) {
-    const parsed = JSON.parse(saved);
-    state = { ...state, ...parsed };
-    // Manter depoimentos padrão se não houver salvos
-    if (!parsed.depoimentos || parsed.depoimentos.length === 0) {
+// ═══════════════════════════════════════════════
+// API — LER E ESCREVER NO SHEETS
+// ═══════════════════════════════════════════════
+async function sheetsGet(action) {
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=${action}`);
+    const data = await res.json();
+    return data;
+  } catch(e) {
+    console.warn('sheetsGet error:', e);
+    return null;
+  }
+}
+
+async function sheetsPost(payload) {
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return true;
+  } catch(e) {
+    console.warn('sheetsPost error:', e);
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// INIT — carregar tudo do Sheets ao abrir
+// ═══════════════════════════════════════════════
+async function init() {
+  mostrarLoading(true);
+  const data = await sheetsGet('getData');
+  if (data) {
+    if (data.config) state.config = { ...state.config, ...data.config };
+    if (data.imoveis) state.imoveis = data.imoveis;
+    if (data.depoimentos && data.depoimentos.length > 0) {
+      state.depoimentos = data.depoimentos;
+    } else {
       state.depoimentos = [
-        { nome: 'Família Oliveira', cidade: 'Cuiabá - MT', texto: 'O Rafael foi incrível do começo ao fim. Nunca imaginei que seria tão fácil. Em 4 meses já estava com as chaves na mão!' },
-        { nome: 'Márcia Santos', cidade: 'Várzea Grande - MT', texto: 'Achei que com meu histórico não ia conseguir, mas o Rafael encontrou uma forma. Super atencioso e honesto sobre tudo.' },
-        { nome: 'Carlos e Renata', cidade: 'Cuiabá - MT', texto: 'Usamos o FGTS como entrada e o processo foi todo acompanhado. Recomendo de olhos fechados para qualquer família que queira a casa própria.' }
+        { nome: 'Família Oliveira', cidade: 'Cuiabá - MT', texto: 'O Rafael foi incrível do começo ao fim. Em 4 meses já estava com as chaves na mão!' },
+        { nome: 'Márcia Santos', cidade: 'Várzea Grande - MT', texto: 'Achei que com meu histórico não ia conseguir, mas o Rafael encontrou uma forma. Super atencioso e honesto.' },
+        { nome: 'Carlos e Renata', cidade: 'Cuiabá - MT', texto: 'Usamos o FGTS como entrada e o processo foi todo acompanhado. Recomendo de olhos fechados!' }
       ];
     }
   }
-
+  mostrarLoading(false);
   renderImoveis('todos');
   renderDepoimentos();
   renderAdminImoveis();
-  renderAdminLeads();
   atualizarWhatsAppBtns();
   atualizarCRECI();
-
-  if (state.config.whatsapp) {
-    document.getElementById('admin-whatsapp').value = state.config.whatsapp;
-  }
-  if (state.config.creci) {
-    document.getElementById('admin-creci').value = state.config.creci;
-  }
-  if (state.config.sheetsUrl) {
-    document.getElementById('admin-sheets-url').value = state.config.sheetsUrl;
-  }
-  // Show current password hint
-  if (state.config.adminPass) {
-    const hint = document.querySelector('#admin-nova-senha + span');
-    if (hint) hint.textContent = 'Senha atual: ' + '*'.repeat(state.config.adminPass.length);
-  }
+  // Preencher admin inputs
+  document.getElementById('admin-whatsapp').value = state.config.whatsapp || '';
+  document.getElementById('admin-creci').value = state.config.creci || '';
+  document.getElementById('admin-sheets-url').value = SCRIPT_URL;
 }
 
-function salvar() {
-  localStorage.setItem('rc_state', JSON.stringify(state));
+function mostrarLoading(show) {
+  const el = document.getElementById('loading-overlay');
+  if (el) el.style.display = show ? 'flex' : 'none';
 }
 
-// ─── CONFIG ───
-function salvarConfig() {
-  state.config.whatsapp = document.getElementById('admin-whatsapp').value.replace(/\D/g, '');
-  state.config.creci = document.getElementById('admin-creci').value;
-  state.config.sheetsUrl = document.getElementById('admin-sheets-url').value.trim();
+// ═══════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════
+async function salvarConfig() {
+  const whatsapp = document.getElementById('admin-whatsapp').value.replace(/\D/g, '');
+  const creci = document.getElementById('admin-creci').value.trim();
   const novaSenha = document.getElementById('admin-nova-senha').value.trim();
+
+  state.config.whatsapp = whatsapp || state.config.whatsapp;
+  state.config.creci = creci || state.config.creci;
   if (novaSenha.length >= 4) state.config.adminPass = novaSenha;
-  salvar();
+
   atualizarWhatsAppBtns();
   atualizarCRECI();
-  const savedMsg = document.getElementById('config-saved-msg');
-  savedMsg.style.display = 'block';
-  setTimeout(() => savedMsg.style.display = 'none', 2000);
+
+  const ok = await sheetsPost({ action: 'saveConfig', config: state.config });
+  const msg = document.getElementById('config-saved-msg');
+  msg.textContent = ok ? 'Configuracoes salvas!' : 'Salvo localmente (verifique conexao)';
+  msg.style.color = ok ? '#4CAF7A' : '#E8C97A';
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
 }
 
 function atualizarWhatsAppBtns() {
-  const num = state.config.whatsapp || '5565999999999';
+  const num = state.config.whatsapp || '5565999730722';
   const msg = encodeURIComponent('Olá Rafael! Tenho interesse em saber mais sobre imóveis do MCMV');
-  document.getElementById('whatsapp-main-btn').href = `https://wa.me/${num}?text=${msg}`;
-  document.getElementById('whatsapp-confirm-btn').href = `https://wa.me/${num}?text=${encodeURIComponent('Olá Rafael! Acabei de preencher o formulário de pré-qualificação no seu site. Aguardo seu retorno!')}`;
+  const mainBtn = document.getElementById('whatsapp-main-btn');
+  if (mainBtn) mainBtn.href = `https://wa.me/${num}?text=${msg}`;
 }
 
 function atualizarCRECI() {
   const el = document.getElementById('footer-creci');
-  el.textContent = state.config.creci ? state.config.creci : '—';
+  if (el) el.textContent = state.config.creci || 'MT 7998';
 }
 
-// ─── IMÓVEIS ───
-function adicionarImovel() {
-  const nome = document.getElementById('adm-nome').value.trim();
-  const local = document.getElementById('adm-local').value.trim();
-  const preco = parseFloat(document.getElementById('adm-preco').value);
-  const area = document.getElementById('adm-area').value;
-  const quartos = document.getElementById('adm-quartos').value;
-  const vagas = document.getElementById('adm-vagas').value;
+// ═══════════════════════════════════════════════
+// IMÓVEIS
+// ═══════════════════════════════════════════════
+async function adicionarImovel() {
+  const nome   = document.getElementById('adm-nome').value.trim();
+  const local  = document.getElementById('adm-local').value.trim();
+  const preco  = parseFloat(document.getElementById('adm-preco').value);
+  const area   = document.getElementById('adm-area').value;
+  const quartos= document.getElementById('adm-quartos').value;
+  const vagas  = document.getElementById('adm-vagas').value;
   const status = document.getElementById('adm-status').value;
-  const img = document.getElementById('adm-img').value.trim();
-  const desc = document.getElementById('adm-desc').value.trim();
+  const img    = document.getElementById('adm-img').value.trim();
+  const desc   = document.getElementById('adm-desc').value.trim();
 
-  if (!nome || !local || !preco) {
-    alert('Preencha pelo menos nome, localização e preço.');
-    return;
-  }
+  if (!nome || !local || !preco) { alert('Preencha nome, localização e preço.'); return; }
 
-  state.imoveis.push({ id: Date.now(), nome, local, preco, area, quartos, vagas, status, img, desc });
-  salvar();
+  const btn = document.querySelector('.btn-admin-add');
+  btn.textContent = 'Salvando...';
+  btn.disabled = true;
+
+  const novoImovel = { id: Date.now(), nome, local, preco, area, quartos, vagas, status, img, desc };
+  state.imoveis.push(novoImovel);
+
+  await sheetsPost({ action: 'saveImovel', imovel: novoImovel });
+
   renderImoveis('todos');
   renderAdminImoveis();
-
-  // Limpar campos
   ['adm-nome','adm-local','adm-preco','adm-area','adm-quartos','adm-vagas','adm-img','adm-desc'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('adm-status').value = 'disponivel';
+  btn.textContent = '+ Adicionar imóvel';
+  btn.disabled = false;
 }
 
-function removerImovel(id) {
+async function removerImovel(id) {
   if (!confirm('Remover este imóvel?')) return;
   state.imoveis = state.imoveis.filter(i => i.id !== id);
-  salvar();
+  await sheetsPost({ action: 'deleteImovel', id });
+  renderImoveis('todos');
+  renderAdminImoveis();
+}
+
+async function atualizarStatusImovel(id, novoStatus) {
+  const im = state.imoveis.find(i => i.id === id);
+  if (!im) return;
+  im.status = novoStatus;
+  await sheetsPost({ action: 'updateImovelStatus', id, status: novoStatus });
   renderImoveis('todos');
   renderAdminImoveis();
 }
 
 function filtrarImoveis(filtro, btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
   renderImoveis(filtro);
 }
 
@@ -2237,42 +2373,34 @@ function renderImoveis(filtro) {
   let lista = filtro === 'todos' ? state.imoveis : state.imoveis.filter(i => i.status === filtro);
 
   if (lista.length === 0) {
-    const msg = filtro === 'todos'
+    const msg = state.imoveis.length === 0
       ? 'Adicione imóveis pelo painel de admin (ícone ⚙ no canto inferior direito).'
       : 'Nenhum imóvel com esse status no momento.';
-    grid.innerHTML = `
-      <div class="imoveis-empty">
-        <h3>Nenhum imóvel cadastrado</h3>
-        <p>${msg}</p>
-      </div>`;
+    grid.innerHTML = `<div class="imoveis-empty"><h3>Nenhum imóvel cadastrado</h3><p>${msg}</p></div>`;
     return;
   }
 
   grid.innerHTML = lista.map(im => {
-    const badgeClass = { disponivel: 'badge-disponivel', reservado: 'badge-reservado', vendido: 'badge-vendido' }[im.status];
-    const badgeLabel = { disponivel: '● Disponível', reservado: '◐ Reservado', vendido: '○ Vendido' }[im.status];
+    const badgeClass = { disponivel:'badge-disponivel', reservado:'badge-reservado', vendido:'badge-vendido' }[im.status];
+    const badgeLabel = { disponivel:'● Disponível', reservado:'◐ Reservado', vendido:'○ Vendido' }[im.status];
     const preco = im.preco ? `R$ ${Number(im.preco).toLocaleString('pt-BR')}` : 'Consulte';
-    const imgSrc = im.img || `https://via.placeholder.com/400x200/1E1E1E/C9A84C?text=${encodeURIComponent(im.nome)}`;
-
+    const imgSrc = im.img || `https://placehold.co/400x200/1E1E1E/C9A84C?text=${encodeURIComponent(im.nome)}`;
     return `
       <div class="imovel-card" onclick="abrirModal(${im.id})">
         <div class="imovel-thumb">
-          <img src="${imgSrc}" alt="${im.nome}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x200/1E1E1E/C9A84C?text=Sem+imagem'">
+          <img src="${imgSrc}" alt="${im.nome}" loading="lazy" onerror="this.src='https://placehold.co/400x200/1E1E1E/C9A84C?text=Sem+imagem'">
           <span class="imovel-badge ${badgeClass}">${badgeLabel}</span>
         </div>
         <div class="imovel-info">
           <h3>${im.nome}</h3>
           <div class="imovel-loc">📍 ${im.local}</div>
           <div class="imovel-specs">
-            ${im.area ? `<span class="spec">📐 ${im.area}m²</span>` : ''}
-            ${im.quartos ? `<span class="spec">🛏 ${im.quartos} qts</span>` : ''}
-            ${im.vagas ? `<span class="spec">🚗 ${im.vagas} vaga${im.vagas > 1 ? 's' : ''}</span>` : ''}
+            ${im.area   ? `<span class="spec">📐 ${im.area}m²</span>` : ''}
+            ${im.quartos? `<span class="spec">🛏 ${im.quartos} qts</span>` : ''}
+            ${im.vagas  ? `<span class="spec">🚗 ${im.vagas} vaga${im.vagas>1?'s':''}</span>` : ''}
           </div>
           <div class="imovel-price">
-            <div>
-              <strong>${preco}</strong>
-              <small>Valor do imóvel</small>
-            </div>
+            <div><strong>${preco}</strong><small>Valor do imóvel</small></div>
             <span class="btn-card">Ver detalhes</span>
           </div>
         </div>
@@ -2283,62 +2411,49 @@ function renderImoveis(filtro) {
 function abrirModal(id) {
   const im = state.imoveis.find(i => i.id === id);
   if (!im) return;
-
   const preco = im.preco ? `R$ ${Number(im.preco).toLocaleString('pt-BR')}` : 'Consultar';
-  const badgeLabel = { disponivel: '● Disponível', reservado: '◐ Reservado', vendido: '○ Vendido' }[im.status];
-  const badgeClass = { disponivel: 'badge-disponivel', reservado: 'badge-reservado', vendido: 'badge-vendido' }[im.status];
-  const num = state.config.whatsapp || '5565999999999';
+  const badgeLabel = { disponivel:'● Disponível', reservado:'◐ Reservado', vendido:'○ Vendido' }[im.status];
+  const badgeClass = { disponivel:'badge-disponivel', reservado:'badge-reservado', vendido:'badge-vendido' }[im.status];
+  const num = state.config.whatsapp || '5565999730722';
   const msg = encodeURIComponent(`Olá Rafael! Tenho interesse no imóvel "${im.nome}" em ${im.local}.`);
-
   document.getElementById('modal-content').innerHTML = `
     <span class="imovel-badge ${badgeClass}" style="display:inline-block;margin-bottom:12px;">${badgeLabel}</span>
     <h2>${im.nome}</h2>
     <p style="color:var(--text-muted);font-size:13px;margin:6px 0 16px;">📍 ${im.local}</p>
     ${im.desc ? `<p style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:20px;">${im.desc}</p>` : ''}
     <div class="modal-specs">
-      ${im.area ? `<div class="modal-spec"><strong>${im.area}</strong><span>m²</span></div>` : ''}
-      ${im.quartos ? `<div class="modal-spec"><strong>${im.quartos}</strong><span>Quarto${im.quartos > 1 ? 's' : ''}</span></div>` : ''}
-      ${im.vagas ? `<div class="modal-spec"><strong>${im.vagas}</strong><span>Vaga${im.vagas > 1 ? 's' : ''}</span></div>` : ''}
+      ${im.area   ? `<div class="modal-spec"><strong>${im.area}</strong><span>m²</span></div>` : ''}
+      ${im.quartos? `<div class="modal-spec"><strong>${im.quartos}</strong><span>Quarto${im.quartos>1?'s':''}</span></div>` : ''}
+      ${im.vagas  ? `<div class="modal-spec"><strong>${im.vagas}</strong><span>Vaga${im.vagas>1?'s':''}</span></div>` : ''}
     </div>
     <div class="modal-price-box">
-      <div>
-        <strong>${preco}</strong>
-        <span style="display:block;font-size:12px;color:var(--text-muted);">Valor do imóvel</span>
-      </div>
+      <div><strong>${preco}</strong><span style="display:block;font-size:12px;color:var(--text-muted);">Valor do imóvel</span></div>
       <span style="font-size:12px;color:var(--text-muted);">Minha Casa Minha Vida</span>
     </div>
     ${im.status === 'disponivel' ? `
     <a href="https://wa.me/${num}?text=${msg}" target="_blank" class="btn-primary" style="width:100%;justify-content:center;">
-      💬 Tenho interesse neste imóvel
-    </a>` : `
-    <p style="text-align:center;color:var(--text-muted);font-size:14px;padding:14px;background:rgba(255,255,255,0.03);border-radius:4px;">
-      ${im.status === 'reservado' ? 'Este imóvel está reservado. Entre em contato para verificar disponibilidade.' : 'Este imóvel foi vendido. Temos outros disponíveis!'}
-    </p>`}
-  `;
-
+      Tenho interesse neste imóvel
+    </a>` : `<p style="text-align:center;color:var(--text-muted);font-size:14px;padding:14px;background:rgba(255,255,255,0.03);border-radius:4px;">
+      ${im.status === 'reservado' ? 'Este imóvel está reservado.' : 'Este imóvel foi vendido. Temos outros disponíveis!'}
+    </p>`}`;
   document.getElementById('modal-imovel').classList.add('open');
 }
 
-function fecharModal() {
-  document.getElementById('modal-imovel').classList.remove('open');
-}
+function fecharModal() { document.getElementById('modal-imovel').classList.remove('open'); }
+document.getElementById('modal-imovel').addEventListener('click', function(e) { if(e.target===this) fecharModal(); });
 
-document.getElementById('modal-imovel').addEventListener('click', function(e) {
-  if (e.target === this) fecharModal();
-});
-
-// ─── DEPOIMENTOS ───
-function adicionarDepoimento() {
-  const nome = document.getElementById('adm-depo-nome').value.trim();
-  const texto = document.getElementById('adm-depo-texto').value.trim();
+// ═══════════════════════════════════════════════
+// DEPOIMENTOS
+// ═══════════════════════════════════════════════
+async function adicionarDepoimento() {
+  const nome   = document.getElementById('adm-depo-nome').value.trim();
+  const texto  = document.getElementById('adm-depo-texto').value.trim();
   const cidade = document.getElementById('adm-depo-cidade').value.trim();
-
   if (!nome || !texto) { alert('Preencha nome e texto.'); return; }
 
   state.depoimentos.push({ nome, texto, cidade });
-  salvar();
+  await sheetsPost({ action: 'saveDepoimento', depoimento: { nome, texto, cidade } });
   renderDepoimentos();
-
   document.getElementById('adm-depo-nome').value = '';
   document.getElementById('adm-depo-texto').value = '';
   document.getElementById('adm-depo-cidade').value = '';
@@ -2352,15 +2467,14 @@ function renderDepoimentos() {
       <p class="depo-text">"${d.texto}"</p>
       <div class="depo-author">
         <div class="depo-avatar">${d.nome.charAt(0)}</div>
-        <div>
-          <h4>${d.nome}</h4>
-          <span>${d.cidade || 'Cuiabá - MT'}</span>
-        </div>
+        <div><h4>${d.nome}</h4><span>${d.cidade || 'Cuiabá - MT'}</span></div>
       </div>
     </div>`).join('');
 }
 
-// ─── ADMIN ───
+// ═══════════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════════
 let adminUnlocked = false;
 
 function toggleAdmin() {
@@ -2368,7 +2482,6 @@ function toggleAdmin() {
     document.getElementById('admin-panel').classList.toggle('open');
     return;
   }
-  // Show password prompt overlay
   document.getElementById('admin-lock').style.display = 'flex';
 }
 
@@ -2381,6 +2494,7 @@ function tentarSenha() {
     document.getElementById('admin-pass-input').value = '';
     document.getElementById('admin-pass-error').style.display = 'none';
     document.getElementById('admin-panel').classList.add('open');
+    renderAdminLeads();
   } else {
     document.getElementById('admin-pass-error').style.display = 'block';
     document.getElementById('admin-pass-input').value = '';
@@ -2402,40 +2516,47 @@ function renderAdminImoveis() {
   }
   list.innerHTML = state.imoveis.map(im => `
     <div class="admin-imovel-item">
-      <span>${im.nome} · ${im.local}</span>
-      <span style="font-size:11px;color:var(--gold)">${im.status}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${im.nome}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${im.local}</div>
+      </div>
+      <select onchange="atualizarStatusImovel(${im.id}, this.value)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--text);padding:4px 8px;border-radius:3px;font-size:11px;font-family:DM Sans,sans-serif;cursor:pointer;">
+        <option value="disponivel" ${im.status==='disponivel'?'selected':''}>Disponível</option>
+        <option value="reservado"  ${im.status==='reservado' ?'selected':''}>Reservado</option>
+        <option value="vendido"    ${im.status==='vendido'   ?'selected':''}>Vendido</option>
+      </select>
       <button class="btn-remove" onclick="removerImovel(${im.id})">×</button>
     </div>`).join('');
 }
 
-function renderAdminLeads() {
+async function renderAdminLeads() {
   const list = document.getElementById('admin-leads-list');
-  if (state.leads.length === 0) {
+  list.innerHTML = '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:16px;">Carregando leads...</div>';
+  const data = await sheetsGet('getLeads');
+  if (!data || !data.leads || data.leads.length === 0) {
     list.innerHTML = '<div class="leads-empty">Nenhum lead ainda</div>';
     return;
   }
-  list.innerHTML = [...state.leads].reverse().map(l => `
+  list.innerHTML = [...data.leads].reverse().map(l => `
     <div class="lead-item">
       <strong>${l.nome}</strong>
       <span>📱 ${l.whatsapp} · ${l.cidade}</span><br>
       <span>Renda: ${l.renda || '—'} · FGTS: ${l.fgts || '—'}</span>
-      <span class="lead-badge">${new Date(l.data).toLocaleDateString('pt-BR')}</span>
+      <span class="lead-badge">${l.data || ''}</span>
     </div>`).join('');
 }
 
-// ─── FORMULÁRIO ───
+// ═══════════════════════════════════════════════
+// FORMULÁRIO
+// ═══════════════════════════════════════════════
 let currentStep = 1;
 
 function irParaStep(step) {
   document.getElementById(`step-${currentStep}`).classList.remove('active');
   document.getElementById(`prog-${currentStep}`)?.classList.remove('active');
-
   currentStep = step;
-
   document.getElementById(`step-${currentStep}`).classList.add('active');
-  for (let i = 1; i <= currentStep; i++) {
-    document.getElementById(`prog-${i}`)?.classList.add('active');
-  }
+  for (let i = 1; i <= currentStep; i++) document.getElementById(`prog-${i}`)?.classList.add('active');
 }
 
 function validarStep1() {
@@ -2453,18 +2574,16 @@ function mascaraTel(el) {
   el.value = v;
 }
 
+const rendasMap = {
+  'ate2000':'Até R$ 2.000','2001-4000':'R$ 2.001 a R$ 4.000',
+  '4001-6000':'R$ 4.001 a R$ 6.000','6001-8000':'R$ 6.001 a R$ 8.000',
+  'acima8000':'Acima de R$ 8.000'
+};
+
 async function enviarFormulario() {
   const btnEnviar = document.querySelector('#step-3 .btn-next');
   btnEnviar.disabled = true;
   btnEnviar.textContent = 'Enviando...';
-
-  const rendasMap = {
-    'ate2000': 'Até R$ 2.000',
-    '2001-4000': 'R$ 2.001 a R$ 4.000',
-    '4001-6000': 'R$ 4.001 a R$ 6.000',
-    '6001-8000': 'R$ 6.001 a R$ 8.000',
-    'acima8000': 'Acima de R$ 8.000'
-  };
 
   const lead = {
     nome: document.getElementById('f-nome').value.trim(),
@@ -2472,7 +2591,7 @@ async function enviarFormulario() {
     cidade: document.getElementById('f-cidade').value.trim(),
     idade: document.getElementById('f-idade').value || '—',
     estadoCivil: document.getElementById('f-estado-civil').value || '—',
-    renda: rendasMap[document.getElementById('f-renda').value] || document.getElementById('f-renda').value || '—',
+    renda: rendasMap[document.getElementById('f-renda').value] || '—',
     fgts: document.querySelector('input[name="fgts"]:checked')?.value || '—',
     moradia: document.getElementById('f-moradia').value || '—',
     emprego: document.querySelector('input[name="emprego"]:checked')?.value || '—',
@@ -2482,28 +2601,11 @@ async function enviarFormulario() {
     data: new Date().toLocaleString('pt-BR', { timeZone: 'America/Cuiaba' })
   };
 
-  // 1. Salvar localmente
-  state.leads.push(lead);
-  salvar();
-  renderAdminLeads();
+  // Salvar no Sheets
+  await sheetsPost({ action: 'saveLead', ...lead });
 
-  // 2. Enviar para Google Sheets (se URL configurada)
-  const sheetsUrl = state.config.sheetsUrl;
-  if (sheetsUrl) {
-    try {
-      await fetch(sheetsUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(lead)
-      });
-    } catch (e) {
-      console.warn('Sheets: falha silenciosa', e);
-    }
-  }
-
-  // 3. Abrir WhatsApp automaticamente com dados completos
-  const num = state.config.whatsapp || '5565999999999';
+  // Abrir WhatsApp
+  const num = state.config.whatsapp || '5565999730722';
   const msgWpp = encodeURIComponent(
     `*NOVO LEAD - Site Rafael Catiste*
 ` +
@@ -2541,14 +2643,8 @@ async function enviarFormulario() {
 ` +
     `${lead.data}`
   );
+  window.open(`https://wa.me/${num}?text=${msgWpp}`, '_blank');
 
-  const wppUrl = `https://wa.me/${num}?text=${msgWpp}`;
-  window.open(wppUrl, '_blank');
-
-  // Atualiza botão de confirmação também
-  document.getElementById('whatsapp-confirm-btn').href = wppUrl;
-
-  // 4. Ir para tela de sucesso
   btnEnviar.disabled = false;
   btnEnviar.textContent = '✦ Enviar para o Rafael';
   document.getElementById('step-3').classList.remove('active');
@@ -2556,7 +2652,19 @@ async function enviarFormulario() {
   for (let i = 1; i <= 3; i++) document.getElementById(`prog-${i}`).classList.add('active');
 }
 
-// ─── SCROLL ───
+// ═══════════════════════════════════════════════
+// UTILITÁRIOS
+// ═══════════════════════════════════════════════
+function copiarScript() {
+  const code = document.getElementById('apps-script-code').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('btn-copiar');
+    btn.textContent = 'Copiado!';
+    setTimeout(() => btn.textContent = 'Copiar codigo', 2000);
+  });
+}
+
+// Scroll nav
 window.addEventListener('scroll', () => {
   const navbar = document.getElementById('navbar');
   if (window.scrollY > 50) navbar.classList.add('scrolled');
@@ -2567,26 +2675,14 @@ window.addEventListener('scroll', () => {
 const reveals = document.querySelectorAll('.reveal');
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(e => {
-    if (e.isIntersecting) {
-      e.target.classList.add('visible');
-      observer.unobserve(e.target);
-    }
+    if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
   });
 }, { threshold: 0.1 });
-
 reveals.forEach(el => observer.observe(el));
 
-// ─── COPIAR SCRIPT ───
-function copiarScript() {
-  const code = document.getElementById('apps-script-code').textContent;
-  navigator.clipboard.writeText(code).then(() => {
-    const btn = document.getElementById('btn-copiar');
-    btn.textContent = 'Copiado!';
-    setTimeout(() => btn.textContent = 'Copiar codigo', 2000);
-  });
-}
-
-// ─── START ───
+// ═══════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════
 init();
 </script>
 </body>
