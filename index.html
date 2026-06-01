@@ -1521,7 +1521,8 @@ footer {
   section { padding: 80px 32px; }
   #hero { grid-template-columns: 1fr; min-height: auto; }
   .hero-left { padding: 120px 32px 60px; }
-  .hero-right { height: 60vw; }
+  .hero-right { height: 60vw; background: none !important; }
+  .hero-photo { background-position: center 20% !important; }
   #sobre { grid-template-columns: 1fr; padding: 80px 32px; }
   .sobre-photos { height: 400px; }
   .imoveis-grid { grid-template-columns: 1fr 1fr; }
@@ -1540,6 +1541,12 @@ footer {
   .hero-stats { flex-wrap: wrap; gap: 24px; }
   #admin-panel { width: 100%; right: -100%; }
   .contato-channels { flex-direction: column; align-items: center; }
+  .hero-right { display: none !important; }
+  .hero-left { 
+    padding: 100px 24px 60px !important;
+    background: linear-gradient(135deg, #0E0E0E 0%, #1a1208 100%);
+  }
+  #hero { min-height: 100vh; }
 }
 </style>
 </head>
