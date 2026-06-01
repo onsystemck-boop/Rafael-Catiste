@@ -2251,30 +2251,64 @@ async function sheetsPost(payload) {
 // ═══════════════════════════════════════════════
 async function init() {
   mostrarLoading(true);
-  const data = await sheetsGet('getData');
-  if (data) {
-    if (data.config) state.config = { ...state.config, ...data.config };
-    if (data.imoveis) state.imoveis = data.imoveis;
-    if (data.depoimentos && data.depoimentos.length > 0) {
-      state.depoimentos = data.depoimentos;
-    } else {
-      state.depoimentos = [
-        { nome: 'Família Oliveira', cidade: 'Cuiabá - MT', texto: 'O Rafael foi incrível do começo ao fim. Em 4 meses já estava com as chaves na mão!' },
-        { nome: 'Márcia Santos', cidade: 'Várzea Grande - MT', texto: 'Achei que com meu histórico não ia conseguir, mas o Rafael encontrou uma forma. Super atencioso e honesto.' },
-        { nome: 'Carlos e Renata', cidade: 'Cuiabá - MT', texto: 'Usamos o FGTS como entrada e o processo foi todo acompanhado. Recomendo de olhos fechados!' }
-      ];
-    }
+
+  // 1. Carregar cache local primeiro (aparece instantâneo)
+  const cache = localStorage.getItem('rc_cache');
+  if (cache) {
+    try {
+      const cached = JSON.parse(cache);
+      if (cached.imoveis) state.imoveis = cached.imoveis;
+      if (cached.depoimentos && cached.depoimentos.length > 0) state.depoimentos = cached.depoimentos;
+      if (cached.config) state.config = { ...state.config, ...cached.config };
+    } catch(e) {}
   }
+
+  // Depoimentos padrão se não tiver nenhum
+  if (state.depoimentos.length === 0) {
+    state.depoimentos = [
+      { nome: 'Família Oliveira', cidade: 'Cuiabá - MT', texto: 'O Rafael foi incrível do começo ao fim. Em 4 meses já estava com as chaves na mão!' },
+      { nome: 'Márcia Santos', cidade: 'Várzea Grande - MT', texto: 'Achei que com meu histórico não ia conseguir, mas o Rafael encontrou uma forma. Super atencioso e honesto.' },
+      { nome: 'Carlos e Renata', cidade: 'Cuiabá - MT', texto: 'Usamos o FGTS como entrada e o processo foi todo acompanhado. Recomendo de olhos fechados!' }
+    ];
+  }
+
+  // Renderizar com cache imediatamente
   mostrarLoading(false);
   renderImoveis('todos');
   renderDepoimentos();
   renderAdminImoveis();
   atualizarWhatsAppBtns();
   atualizarCRECI();
-  // Preencher admin inputs
   document.getElementById('admin-whatsapp').value = state.config.whatsapp || '';
   document.getElementById('admin-creci').value = state.config.creci || '';
   document.getElementById('admin-sheets-url').value = SCRIPT_URL;
+
+  // 2. Tentar buscar do Sheets em background (atualiza se responder)
+  const data = await sheetsGet('getData');
+  if (data) {
+    let changed = false;
+    if (data.config) { state.config = { ...state.config, ...data.config }; changed = true; }
+    if (data.imoveis && data.imoveis.length >= 0) { state.imoveis = data.imoveis; changed = true; }
+    if (data.depoimentos && data.depoimentos.length > 0) { state.depoimentos = data.depoimentos; changed = true; }
+    if (changed) {
+      salvarCache();
+      renderImoveis('todos');
+      renderDepoimentos();
+      renderAdminImoveis();
+      atualizarWhatsAppBtns();
+      atualizarCRECI();
+    }
+  }
+}
+
+function salvarCache() {
+  try {
+    localStorage.setItem('rc_cache', JSON.stringify({
+      imoveis: state.imoveis,
+      depoimentos: state.depoimentos,
+      config: state.config
+    }));
+  } catch(e) {}
 }
 
 function mostrarLoading(show) {
@@ -2341,7 +2375,7 @@ async function adicionarImovel() {
   state.imoveis.push(novoImovel);
 
   await sheetsPost({ action: 'saveImovel', imovel: novoImovel });
-
+  salvarCache();
   renderImoveis('todos');
   renderAdminImoveis();
   ['adm-nome','adm-local','adm-preco','adm-area','adm-quartos','adm-vagas','adm-img','adm-desc'].forEach(id => {
@@ -2356,6 +2390,7 @@ async function removerImovel(id) {
   if (!confirm('Remover este imóvel?')) return;
   state.imoveis = state.imoveis.filter(i => i.id !== id);
   await sheetsPost({ action: 'deleteImovel', id });
+  salvarCache();
   renderImoveis('todos');
   renderAdminImoveis();
 }
@@ -2365,6 +2400,7 @@ async function atualizarStatusImovel(id, novoStatus) {
   if (!im) return;
   im.status = novoStatus;
   await sheetsPost({ action: 'updateImovelStatus', id, status: novoStatus });
+  salvarCache();
   renderImoveis('todos');
   renderAdminImoveis();
 }
@@ -2460,6 +2496,7 @@ async function adicionarDepoimento() {
 
   state.depoimentos.push({ nome, texto, cidade });
   await sheetsPost({ action: 'saveDepoimento', depoimento: { nome, texto, cidade } });
+  salvarCache();
   renderDepoimentos();
   document.getElementById('adm-depo-nome').value = '';
   document.getElementById('adm-depo-texto').value = '';
