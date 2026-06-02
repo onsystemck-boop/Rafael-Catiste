@@ -1515,6 +1515,111 @@ footer {
   color: var(--text-muted);
 }
 
+/* ─── CARROSSEL MODAL ─── */
+.carousel {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  background: var(--dark);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.carousel-slides {
+  display: flex;
+  height: 100%;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.carousel-slide {
+  min-width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.carousel-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  z-index: 5;
+  transition: background var(--transition);
+  backdrop-filter: blur(4px);
+}
+
+.carousel-btn:hover { background: rgba(201,168,76,0.7); }
+.carousel-btn.prev { left: 10px; }
+.carousel-btn.next { right: 10px; }
+
+.carousel-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+}
+
+.carousel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: background var(--transition);
+  border: none;
+  padding: 0;
+}
+
+.carousel-dot.active { background: var(--gold); }
+
+.foto-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+}
+
+.foto-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: var(--mid);
+}
+
+.foto-item span {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* RESPONSIVO */
 @media (max-width: 1024px) {
   nav { padding: 16px 24px; }
@@ -2147,8 +2252,16 @@ function jsonResponse(obj) {
         </select>
       </div>
       <div class="form-group">
-        <label>URL da imagem (opcional)</label>
-        <input type="text" id="adm-img" placeholder="https://...">
+        <label>Fotos do imóvel (Google Drive)</label>
+        <div id="adm-fotos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="adm-img-raw" placeholder="Cole o link do Drive e clique em +" style="flex:1;">
+          <button onclick="adicionarFoto()" type="button" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:var(--gold);padding:8px 14px;border-radius:4px;cursor:pointer;font-size:18px;font-family:DM Sans,sans-serif;flex-shrink:0;">+</button>
+        </div>
+        <input type="hidden" id="adm-img">
+        <span id="adm-img-preview" style="font-size:11px;color:var(--text-muted);margin-top:6px;display:block;">
+          Compartilhar no Drive → "Qualquer pessoa com o link" → copiar → colar aqui → clicar +
+        </span>
       </div>
       <div class="form-group">
         <label>Descrição curta</label>
@@ -2382,6 +2495,7 @@ async function adicionarImovel() {
     document.getElementById(id).value = '';
   });
   document.getElementById('adm-status').value = 'disponivel';
+  limparFotosTemp();
   btn.textContent = '+ Adicionar imóvel';
   btn.disabled = false;
 }
@@ -2427,7 +2541,8 @@ function renderImoveis(filtro) {
     const badgeClass = { disponivel:'badge-disponivel', reservado:'badge-reservado', vendido:'badge-vendido' }[im.status];
     const badgeLabel = { disponivel:'● Disponível', reservado:'◐ Reservado', vendido:'○ Vendido' }[im.status];
     const preco = im.preco ? `R$ ${Number(im.preco).toLocaleString('pt-BR')}` : 'Consulte';
-    const imgSrc = im.img || `https://placehold.co/400x200/1E1E1E/C9A84C?text=${encodeURIComponent(im.nome)}`;
+    const primeiraFoto = im.img ? im.img.split('|')[0].trim() : '';
+    const imgSrc = primeiraFoto || `https://placehold.co/400x200/1E1E1E/C9A84C?text=${encodeURIComponent(im.nome)}`;
     return `
       <div class="imovel-card" onclick="abrirModal(${im.id})">
         <div class="imovel-thumb">
@@ -2459,7 +2574,19 @@ function abrirModal(id) {
   const badgeClass = { disponivel:'badge-disponivel', reservado:'badge-reservado', vendido:'badge-vendido' }[im.status];
   const num = state.config.whatsapp || '5565999730722';
   const msg = encodeURIComponent(`Olá Rafael! Tenho interesse no imóvel "${im.nome}" em ${im.local}.`);
+
+  // Build carousel
+  const fotos = im.img ? im.img.split('|').filter(f => f.trim()) : [];
+  let carouselHtml = '';
+  if (fotos.length > 0) {
+    const slides = fotos.map((f,i) => `<div class="carousel-slide"><img src="${f}" alt="Foto ${i+1}" onerror="this.parentElement.style.display='none'"></div>`).join('');
+    const dots = fotos.length > 1 ? `<div class="carousel-dots">${fotos.map((_,i) => `<button class="carousel-dot ${i===0?'active':''}" onclick="carouselGoTo(${i})"></button>`).join('')}</div>` : '';
+    const btns = fotos.length > 1 ? `<button class="carousel-btn prev" onclick="carouselMove(-1)">‹</button><button class="carousel-btn next" onclick="carouselMove(1)">›</button>` : '';
+    carouselHtml = `<div class="carousel" id="modal-carousel"><div class="carousel-slides" id="carousel-slides">${slides}</div>${btns}${dots}</div>`;
+  }
+
   document.getElementById('modal-content').innerHTML = `
+    ${carouselHtml}
     <span class="imovel-badge ${badgeClass}" style="display:inline-block;margin-bottom:12px;">${badgeLabel}</span>
     <h2>${im.nome}</h2>
     <p style="color:var(--text-muted);font-size:13px;margin:6px 0 16px;">📍 ${im.local}</p>
@@ -2479,7 +2606,26 @@ function abrirModal(id) {
     </a>` : `<p style="text-align:center;color:var(--text-muted);font-size:14px;padding:14px;background:rgba(255,255,255,0.03);border-radius:4px;">
       ${im.status === 'reservado' ? 'Este imóvel está reservado.' : 'Este imóvel foi vendido. Temos outros disponíveis!'}
     </p>`}`;
+
+  window._carouselIdx = 0;
+  window._carouselTotal = fotos.length;
   document.getElementById('modal-imovel').classList.add('open');
+}
+
+function carouselMove(dir) {
+  const total = window._carouselTotal || 0;
+  if (total <= 1) return;
+  window._carouselIdx = (window._carouselIdx + dir + total) % total;
+  carouselGoTo(window._carouselIdx);
+}
+
+function carouselGoTo(idx) {
+  window._carouselIdx = idx;
+  const slides = document.getElementById('carousel-slides');
+  if (slides) slides.style.transform = `translateX(-${idx * 100}%)`;
+  document.querySelectorAll('.carousel-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === idx);
+  });
 }
 
 function fecharModal() { document.getElementById('modal-imovel').classList.remove('open'); }
@@ -2723,6 +2869,64 @@ const observer = new IntersectionObserver((entries) => {
   });
 }, { threshold: 0.1 });
 reveals.forEach(el => observer.observe(el));
+
+// ═══════════════════════════════════════════════
+// FOTOS MÚLTIPLAS — ADMIN
+// ═══════════════════════════════════════════════
+let fotosTemp = [];
+
+function driveUrlFromRaw(raw) {
+  const patterns = [/\/file\/d\/([a-zA-Z0-9_-]+)/, /id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/];
+  for (const p of patterns) {
+    const m = raw.match(p);
+    if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w800`;
+  }
+  return raw.startsWith('http') ? raw : null;
+}
+
+function adicionarFoto() {
+  const input = document.getElementById('adm-img-raw');
+  const raw = input.value.trim();
+  if (!raw) return;
+  const url = driveUrlFromRaw(raw);
+  if (!url) {
+    document.getElementById('adm-img-preview').textContent = 'Link inválido. Use um link do Google Drive.';
+    document.getElementById('adm-img-preview').style.color = '#ff6464';
+    return;
+  }
+  fotosTemp.push(url);
+  document.getElementById('adm-img').value = fotosTemp.join('|');
+  input.value = '';
+  document.getElementById('adm-img-preview').textContent = `${fotosTemp.length} foto(s) adicionada(s)`;
+  document.getElementById('adm-img-preview').style.color = '#4CAF7A';
+  renderFotosTemp();
+}
+
+function removerFotoTemp(idx) {
+  fotosTemp.splice(idx, 1);
+  document.getElementById('adm-img').value = fotosTemp.join('|');
+  document.getElementById('adm-img-preview').textContent = fotosTemp.length > 0 ? `${fotosTemp.length} foto(s) adicionada(s)` : 'Compartilhar no Drive → "Qualquer pessoa com o link" → copiar → colar aqui → clicar +';
+  document.getElementById('adm-img-preview').style.color = fotosTemp.length > 0 ? '#4CAF7A' : 'var(--text-muted)';
+  renderFotosTemp();
+}
+
+function renderFotosTemp() {
+  const lista = document.getElementById('adm-fotos-lista');
+  lista.innerHTML = fotosTemp.map((url, i) => `
+    <div class="foto-item">
+      <img class="foto-thumb" src="${url}" onerror="this.style.opacity=0.3">
+      <span>${url.includes('drive.google') ? 'Foto Drive ' + (i+1) : url}</span>
+      <button onclick="removerFotoTemp(${i})" style="background:transparent;border:none;color:rgba(255,100,100,0.6);cursor:pointer;font-size:16px;padding:0 4px;">×</button>
+    </div>`).join('');
+}
+
+function limparFotosTemp() {
+  fotosTemp = [];
+  document.getElementById('adm-img').value = '';
+  document.getElementById('adm-fotos-lista').innerHTML = '';
+  document.getElementById('adm-img-preview').textContent = 'Compartilhar no Drive → "Qualquer pessoa com o link" → copiar → colar aqui → clicar +';
+  document.getElementById('adm-img-preview').style.color = 'var(--text-muted)';
+}
 
 // ═══════════════════════════════════════════════
 // START
